@@ -1,0 +1,6 @@
+c:\users\gewl\documents\visual studio 2015\Projects\MultisourceDijkstra\MultisourceDijkstra\bin\Debug\MultisourceDijkstra.exe.config
+c:\users\gewl\documents\visual studio 2015\Projects\MultisourceDijkstra\MultisourceDijkstra\bin\Debug\MultisourceDijkstra.exe
+c:\users\gewl\documents\visual studio 2015\Projects\MultisourceDijkstra\MultisourceDijkstra\bin\Debug\MultisourceDijkstra.pdb
+c:\users\gewl\documents\visual studio 2015\Projects\MultisourceDijkstra\MultisourceDijkstra\obj\Debug\MultisourceDijkstra.csprojResolveAssemblyReference.cache
+c:\users\gewl\documents\visual studio 2015\Projects\MultisourceDijkstra\MultisourceDijkstra\obj\Debug\MultisourceDijkstra.exe
+c:\users\gewl\documents\visual studio 2015\Projects\MultisourceDijkstra\MultisourceDijkstra\obj\Debug\MultisourceDijkstra.pdb
