@@ -10,15 +10,11 @@ namespace MultisourceDijkstra
         static EdgeWeightedDigraph ewd;
 
         static void Main()
-        { 
+        {
             Console.WriteLine("Filepath to txt file containing edge-weighted digraph:");
             string fp = Console.ReadLine();
-
+            
             ewd = new EdgeWeightedDigraph(fp);
-
-            ewd.printVertexCount();
-
-            ewd.printEdgesFrom(6);
 
             Console.ReadKey();
 
@@ -68,6 +64,18 @@ namespace MultisourceDijkstra
                 Console.WriteLine("File could not be read.");
                 Console.WriteLine(e.Message);
             }
+        }
+
+        public List<int> adj(int source)
+        {
+            List<int> adjVertices = new List<int>();
+
+            foreach (KeyValuePair<int, float> edge in edges[source])
+            {
+                adjVertices.Add(edge.Key);
+            }
+
+            return adjVertices;
         }
 
         public void printVertexCount ()
