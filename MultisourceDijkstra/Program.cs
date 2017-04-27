@@ -16,6 +16,8 @@ namespace MultisourceDijkstra
         static float[] distanceTo;
         // stores reference to vertex at head of edge for which vertex n is the tail at edgeTo[n] in SPT
         static int[] edgeTo;
+        // sources for SPT
+        static int[] s;
 
         static void Main()
         {
@@ -30,13 +32,13 @@ namespace MultisourceDijkstra
             nodes = new SortedDictionary<float, int>();
             nodesRef = new SortedDictionary<int, float>();
 
-            Console.WriteLine("Which node between 0 and " + (vCount - 1) + " is the source?");
+            Console.WriteLine("Which nodes between 0 and " + (vCount - 1) + " is the source? (Format: Integers separate by spaces, e.g. `2 4 5 7`)");
             string sText = Console.ReadLine();
-            int s = Int32.Parse(sText);
+            s = parseSources(sText);
 
             for (int v = 0; v < vCount; v++)
             {
-                if (v == s)
+                if (s.Contains<int>(v))
                 {
                     distanceTo[v] = 0.0f;
                 }
@@ -46,8 +48,13 @@ namespace MultisourceDijkstra
                 }
             }
 
-            nodes.Add(distanceTo[s], s);
-            nodesRef.Add(s, distanceTo[s]);
+            foreach (int source in s)
+            {
+                Console.WriteLine(source);
+                nodes.Add(distanceTo[source], source);
+                nodesRef.Add(source, distanceTo[source]);
+            }
+
 
             while (nodes.Count != 0)
             {
@@ -61,6 +68,28 @@ namespace MultisourceDijkstra
             printSPT();
 
             Console.ReadKey();
+        }
+
+        private static int[] parseSources(string input)
+        {
+            string rePattern = @"(\d+)";
+            List<int> sources = new List<int>();
+
+            try
+            {
+                foreach (Match sourceString in Regex.Matches(input, rePattern))
+                {
+                    int source = Int32.Parse(sourceString.Value);
+                    sources.Add(source);
+                }
+
+                return sources.ToArray<int>();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Couldn't parse sources input");
+                throw new Exception(e.Message);
+            }
         }
 
         private static void relax(EdgeWeightedDigraph graph, int vertex)
@@ -91,8 +120,15 @@ namespace MultisourceDijkstra
             for (int i = 0; i < distanceTo.Length; i++)
             {
                 Console.WriteLine("Vertex " + i + ":");
-                Console.WriteLine("Edge from " + edgeTo[i] + ".");
-                Console.WriteLine("Distance to: " + distanceTo[i]);
+                if (s.Contains<int>(i))
+                {
+                    Console.WriteLine("Source vertex.");
+                }
+                else
+                {
+                    Console.WriteLine("Edge from " + edgeTo[i] + ".");
+                    Console.WriteLine("Distance to: " + distanceTo[i]);
+                }
             }
         }
     }
@@ -103,7 +139,7 @@ namespace MultisourceDijkstra
         public int edgeCount { get; protected set; }
         private Dictionary<int, float>[] edges;
 
-        public EdgeWeightedDigraph (string pathToFile)
+        public EdgeWeightedDigraph(string pathToFile)
         {
             StreamReader txtContents = new StreamReader(pathToFile);
 
