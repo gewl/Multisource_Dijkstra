@@ -52,15 +52,10 @@ namespace MultisourceDijkstra
             while (nodes.Count != 0)
             {
                 int nextNode = nodes.Values.First();
-                Console.WriteLine("Taking " + nextNode + "off the queue");
                 float nodeRef = nodesRef[nextNode];
                 nodes.Remove(nodeRef);
                 nodesRef.Remove(nextNode);
                 relax(ewd, nextNode);
-            }
-            foreach (KeyValuePair<float, int> item in nodes)
-            {
-                Console.WriteLine(item.Value + ": " + item.Key);
             }
 
             printSPT();
@@ -75,8 +70,6 @@ namespace MultisourceDijkstra
             foreach (int node in tails)
             {
                 float weight = graph.getWeight(vertex, node);
-                Console.WriteLine("Path from " + vertex + " to " + node);
-                Console.WriteLine("Checking if new distance " + (distanceTo[vertex] + weight) + " is faster than old distance " + distanceTo[node]);
                 if (distanceTo[node] > distanceTo[vertex] + weight)
                 {
                     distanceTo[node] = distanceTo[vertex] + weight;
@@ -177,19 +170,6 @@ namespace MultisourceDijkstra
             }
 
             return adjVertices;
-        }
-
-        public void printVertexCount ()
-        {
-            Console.WriteLine(vertexCount);
-        }
-
-        public void printEdgesFrom (int source)
-        {
-            foreach (KeyValuePair<int, float> edge in edges[source])
-            {
-                Console.WriteLine("The edge from " + source + " to " + edge.Key + " has weight " + edge.Value);
-            }
         }
 
         public void addEdge(int source, int target, float weight)
