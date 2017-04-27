@@ -9,8 +9,8 @@ namespace MultisourceDijkstra
     class MultisourceDijkstra
     {
         static EdgeWeightedDigraph ewd;
-        static SortedDictionary<float, int> nodes;
-        static SortedDictionary<int, float> nodesRef;
+        static SortedDictionary<float, List<int>> nodes;
+        static Dictionary<int, float> nodesRef;
         
         // stores distance to vertex n from source s at distanceTo[n] in shortest-paths tree (SPT)
         static float[] distanceTo;
@@ -29,8 +29,8 @@ namespace MultisourceDijkstra
             distanceTo = new float[vCount];
             edgeTo = new int[vCount];
 
-            nodes = new SortedDictionary<float, int>();
-            nodesRef = new SortedDictionary<int, float>();
+            nodes = new SortedDictionary<float, List<int>>();
+            nodesRef = new Dictionary<int, float>();
 
             Console.WriteLine("Which nodes between 0 and " + (vCount - 1) + " is the source? (Format: Integers separate by spaces, e.g. `2 4 5 7`)");
             string sText = Console.ReadLine();
@@ -48,26 +48,57 @@ namespace MultisourceDijkstra
                 }
             }
 
+            // add each sourceNode to sortedDictionary with distance of 0.0f
+            // sortedDictionary 'nodes':
+            // Keys: distance from source to node (float)
+            // Values: Lists of integers, containing nodes found at that distance (List<int>)
+            // dictionary 'nodesRef': reverse lookup for nodes
+            // Keys: node (int)
+            // Values: distance to node from source (float)
             foreach (int source in s)
             {
                 Console.WriteLine(source);
-                nodes.Add(distanceTo[source], source);
-                nodesRef.Add(source, distanceTo[source]);
+                queueNode(source);
             }
 
-
+            // while sortedDictionary has nodes, remove closest node, add to tree, and add edges from that node to sortedDictionary
             while (nodes.Count != 0)
             {
-                int nextNode = nodes.Values.First();
-                float nodeRef = nodesRef[nextNode];
-                nodes.Remove(nodeRef);
-                nodesRef.Remove(nextNode);
+                int nextNode = nodes.Values.First().First<int>();
+                removeNode(nextNode);
                 relax(ewd, nextNode);
             }
 
             printSPT();
 
             Console.ReadKey();
+        }
+
+        // places node into nodes sortedDict and nodeRefs dict
+        private static void queueNode(int node)
+        {
+            // if nodes does not contain list for nodes at given distance, initializes new list under distance key
+            if (!nodes.ContainsKey(distanceTo[node]))
+            {
+                nodes.Add(distanceTo[node], new List<int>());
+            }
+            // adds node to list under distance key in sortedDictionary
+            nodes[distanceTo[node]].Add(node);
+            // adds distance to sortedDictionary under node key
+            nodesRef.Add(node, distanceTo[node]);
+        }
+
+        // removes node from nodes sortedDict and nodeRefs dict
+        private static void removeNode(int node)
+        {
+            float nodeRef = nodesRef[node];
+            nodes[nodesRef[node]].Remove(node);
+            // if node being removed is last under 'distance' key in sortedDict, delete the key/value in sortedDict to help with garbage collection
+            if (nodes[nodesRef[node]].Count == 0)
+            {
+                nodes.Remove(nodesRef[node]);
+            }
+            nodesRef.Remove(node);
         }
 
         private static int[] parseSources(string input)
@@ -103,14 +134,11 @@ namespace MultisourceDijkstra
                 {
                     distanceTo[node] = distanceTo[vertex] + weight;
                     edgeTo[node] = vertex;
-                    if (nodesRef.ContainsValue(node))
+                    if (nodesRef.ContainsKey(node))
                     {
-                        float nodeRef = nodesRef[node];
-                        nodes.Remove(nodeRef);
-                        nodesRef.Remove(node);
+                        removeNode(node);
                     }
-                    nodes.Add(distanceTo[node], node);
-                    nodesRef.Add(node, distanceTo[node]);
+                    queueNode(node);
                 }
             }
         }
@@ -127,7 +155,7 @@ namespace MultisourceDijkstra
                 else
                 {
                     Console.WriteLine("Edge from " + edgeTo[i] + ".");
-                    Console.WriteLine("Distance to: " + distanceTo[i]);
+                    Console.WriteLine("Distance from nearest source to " + i + ": " + distanceTo[i]);
                 }
             }
         }
