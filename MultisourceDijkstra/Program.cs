@@ -2,13 +2,15 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace MultisourceDijkstra
 {
     class MultisourceDijkstra
     {
         static EdgeWeightedDigraph ewd;
-        static IndexMinPQ pq;
+        static SortedDictionary<float, int> nodes;
+        static SortedDictionary<int, float> nodesRef;
         
         // stores distance to vertex n from source s at distanceTo[n] in shortest-paths tree (SPT)
         static float[] distanceTo;
@@ -25,130 +27,80 @@ namespace MultisourceDijkstra
             distanceTo = new float[vCount];
             edgeTo = new int[vCount];
 
-            pq = new IndexMinPQ(vCount);
+            nodes = new SortedDictionary<float, int>();
+            nodesRef = new SortedDictionary<int, float>();
 
-            for (int v = 0; v <= vCount; v++)
+            Console.WriteLine("Which node between 0 and " + (vCount - 1) + " is the source?");
+            string sText = Console.ReadLine();
+            int s = Int32.Parse(sText);
+
+            for (int v = 0; v < vCount; v++)
             {
-                distanceTo[v] = int.MaxValue;
+                if (v == s)
+                {
+                    distanceTo[v] = 0.0f;
+                }
+                else
+                {
+                    distanceTo[v] = int.MaxValue;
+                }
             }
+
+            nodes.Add(distanceTo[s], s);
+            nodesRef.Add(s, distanceTo[s]);
+
+            while (nodes.Count != 0)
+            {
+                int nextNode = nodes.Values.First();
+                Console.WriteLine("Taking " + nextNode + "off the queue");
+                float nodeRef = nodesRef[nextNode];
+                nodes.Remove(nodeRef);
+                nodesRef.Remove(nextNode);
+                relax(ewd, nextNode);
+            }
+            foreach (KeyValuePair<float, int> item in nodes)
+            {
+                Console.WriteLine(item.Value + ": " + item.Key);
+            }
+
+            printSPT();
 
             Console.ReadKey();
         }
-    }
 
-    // Piecemeal IndexMinPQ implementation w/o methods that algo doesn't use.
-    public class IndexMinPQ
-    {
-        public int maxLength { get; protected set; }
-        public int currentLength { get; protected set; }
-        private int[] pq;
-        private int[] qp;
-        private float[] dists;
-
-        public IndexMinPQ (int mL)
+        private static void relax(EdgeWeightedDigraph graph, int vertex)
         {
-            maxLength = mL;
-            currentLength = 0;
-            pq = new int[maxLength + 1];
-            dists = new float[maxLength + 1];
-            qp = new int[maxLength + 1];
-            for (int i = 0; i <= maxLength; i++)
+            List<int> tails = graph.adj(vertex);
+
+            foreach (int node in tails)
             {
-                qp[i] = -1;
-            }
-        }
-
-        public bool isEmpty()
-        {
-            return currentLength == 0;
-        }
-
-        public bool contains(int i)
-        {
-            if (i < 0 || i >= maxLength)
-            {
-                throw new Exception("Queue index for contains not in range");
-            }
-            return qp[i] > -1;
-        }
-
-        private bool less (int i, int j)
-        {
-            return pq[i] < pq[j];
-        }
-
-        private void exch (int i, int j)
-        {
-            int temp = pq[i];
-            pq[i] = pq[j];
-            pq[j] = temp;
-        }
-        
-        public void swim (int k)
-        {
-            while (k > 1 && less(k/2, k))
-            {
-                exch(k / 2, k);
-                k = k / 2;
-            }
-        }
-
-        public void sink (int k)
-        {
-            while (2*k <= maxLength)
-            {
-                int j = 2 * k;
-                if (j < maxLength && less(j, j+1))
+                float weight = graph.getWeight(vertex, node);
+                Console.WriteLine("Path from " + vertex + " to " + node);
+                Console.WriteLine("Checking if new distance " + (distanceTo[vertex] + weight) + " is faster than old distance " + distanceTo[node]);
+                if (distanceTo[node] > distanceTo[vertex] + weight)
                 {
-                    j++;
+                    distanceTo[node] = distanceTo[vertex] + weight;
+                    edgeTo[node] = vertex;
+                    if (nodesRef.ContainsValue(node))
+                    {
+                        float nodeRef = nodesRef[node];
+                        nodes.Remove(nodeRef);
+                        nodesRef.Remove(node);
+                    }
+                    nodes.Add(distanceTo[node], node);
+                    nodesRef.Add(node, distanceTo[node]);
                 }
-                if (!less(k, j))
-                {
-                    break;
-                }
-                exch(k, j);
-                k = j;
             }
         }
 
-        public void insert(int i, float dist)
+        public static void printSPT()
         {
-            if (i < 0 || i >= maxLength || contains(i))
+            for (int i = 0; i < distanceTo.Length; i++)
             {
-                throw new Exception("Could not insert");
+                Console.WriteLine("Vertex " + i + ":");
+                Console.WriteLine("Edge from " + edgeTo[i] + ".");
+                Console.WriteLine("Distance to: " + distanceTo[i]);
             }
-
-            currentLength++;
-            qp[i] = currentLength;
-            pq[currentLength] = i;
-            dists[i] = dist;
-            swim(currentLength);
-        }
-
-        public int delMinKey()
-        {
-            if (currentLength == 0)
-            {
-                throw new Exception("Queue empty at minDist call");
-            }
-
-            int min = pq[1];
-            exch(1, currentLength--);
-            sink(1);
-            qp[min] = -1;
-            pq[min + 1] = -1;
-            return min;
-        }
-
-        public void changeDist (int i, float dist)
-        {
-            if (i < 0 || i >= maxLength || !contains(i))
-            {
-                throw new Exception("index not in queue or out of bounds");
-            }
-            dists[i] = dist;
-            swim(qp[i]);
-            sink(qp[i]);
         }
     }
 
@@ -198,6 +150,20 @@ namespace MultisourceDijkstra
                 Console.WriteLine("File could not be read.");
                 Console.WriteLine(e.Message);
             }
+        }
+
+        public float getWeight(int source, int target)
+        {
+            if (source < 0 || source > edges.Length)
+            {
+                Console.WriteLine("getWeight: Source not found.");
+            }
+            if (!edges[source].ContainsKey(target))
+            {
+                Console.WriteLine("getWeight: Edge not found.");
+            }
+
+            return edges[source][target];
         }
 
         // Lists tails of all edges for which @source is the head
