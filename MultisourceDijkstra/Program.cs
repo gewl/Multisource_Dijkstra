@@ -9,8 +9,15 @@ namespace MultisourceDijkstra
     class MultisourceDijkstra
     {
         static EdgeWeightedDigraph ewd;
-        static SortedDictionary<float, List<int>> nodes;
-        static Dictionary<int, float> nodesRef;
+        // Pseudo-priority-queue that stores vertices sorted on distance from source
+        // Key: distance (float)
+        // Value: list of vertices found at that distance (List<int>)
+        // Use: While loop during pathfinding process dequeues lowest vertex at shortest distance, adds to tree, and queues eligible edges from that vertex
+        static SortedDictionary<float, List<int>> verticesPriorityQueue;
+        // Stores distances to vertices in `vertices` sortedDict for easy reference
+        // Key: vertex (int)
+        // Value: distance (float)
+        static Dictionary<int, float> verticesQueueRef;
         
         // stores distance to vertex n from source s at distanceTo[n] in shortest-paths tree (SPT)
         static float[] distanceTo;
@@ -29,10 +36,10 @@ namespace MultisourceDijkstra
             distanceTo = new float[vCount];
             edgeTo = new int[vCount];
 
-            nodes = new SortedDictionary<float, List<int>>();
-            nodesRef = new Dictionary<int, float>();
+            verticesPriorityQueue = new SortedDictionary<float, List<int>>();
+            verticesQueueRef = new Dictionary<int, float>();
 
-            Console.WriteLine("Which nodes between 0 and " + (vCount - 1) + " is the source? (Format: Integers separate by spaces, e.g. `2 4 5 7`)");
+            Console.WriteLine("Which nodes between 0 and " + (vCount - 1) + " is/are the source(s)? (Format: Integers separate by spaces, e.g. `2 4 5 7`)");
             string sText = Console.ReadLine();
             s = parseSources(sText);
 
@@ -48,25 +55,19 @@ namespace MultisourceDijkstra
                 }
             }
 
-            // add each sourceNode to sortedDictionary with distance of 0.0f
-            // sortedDictionary 'nodes':
-            // Keys: distance from source to node (float)
-            // Values: Lists of integers, containing nodes found at that distance (List<int>)
-            // dictionary 'nodesRef': reverse lookup for nodes
-            // Keys: node (int)
-            // Values: distance to node from source (float)
+            // add each source vertex to sortedDictionary with distance of 0.0f
             foreach (int source in s)
             {
                 Console.WriteLine(source);
-                queueNode(source);
+                queueVertex(source);
             }
 
-            // while sortedDictionary has nodes, remove closest node, add to tree, and add edges from that node to sortedDictionary
-            while (nodes.Count != 0)
+            // while sortedDictionary has vertices, remove closest vertex, add to tree, and add edges from that vertex to sortedDictionary
+            while (verticesPriorityQueue.Count != 0)
             {
-                int nextNode = nodes.Values.First().First<int>();
-                removeNode(nextNode);
-                relax(ewd, nextNode);
+                int nextVertex = verticesPriorityQueue.Values.First().First<int>();
+                removeVertex(nextVertex);
+                relax(ewd, nextVertex);
             }
 
             printSPT();
@@ -74,31 +75,31 @@ namespace MultisourceDijkstra
             Console.ReadKey();
         }
 
-        // places node into nodes sortedDict and nodeRefs dict
-        private static void queueNode(int node)
+        // places vertex into `verticesPriorityQueue` sortedDict and `verticesQueueRef` dict
+        private static void queueVertex(int vertex)
         {
             // if nodes does not contain list for nodes at given distance, initializes new list under distance key
-            if (!nodes.ContainsKey(distanceTo[node]))
+            if (!verticesPriorityQueue.ContainsKey(distanceTo[vertex]))
             {
-                nodes.Add(distanceTo[node], new List<int>());
+                verticesPriorityQueue.Add(distanceTo[vertex], new List<int>());
             }
-            // adds node to list under distance key in sortedDictionary
-            nodes[distanceTo[node]].Add(node);
-            // adds distance to sortedDictionary under node key
-            nodesRef.Add(node, distanceTo[node]);
+            // adds vertex to list under distance key in sortedDictionary
+            verticesPriorityQueue[distanceTo[vertex]].Add(vertex);
+            // adds distance to sortedDictionary under vertex key
+            verticesQueueRef.Add(vertex, distanceTo[vertex]);
         }
 
-        // removes node from nodes sortedDict and nodeRefs dict
-        private static void removeNode(int node)
+        // removes vertex from priority queue & reference dict
+        private static void removeVertex(int vertex)
         {
-            float nodeRef = nodesRef[node];
-            nodes[nodesRef[node]].Remove(node);
-            // if node being removed is last under 'distance' key in sortedDict, delete the key/value in sortedDict to help with garbage collection
-            if (nodes[nodesRef[node]].Count == 0)
+            float nodeRef = verticesQueueRef[vertex];
+            verticesPriorityQueue[verticesQueueRef[vertex]].Remove(vertex);
+            // if vertex being removed is last under 'distance' key in sortedDict, delete the key/value in sortedDict to help with garbage collection
+            if (verticesPriorityQueue[verticesQueueRef[vertex]].Count == 0)
             {
-                nodes.Remove(nodesRef[node]);
+                verticesPriorityQueue.Remove(verticesQueueRef[vertex]);
             }
-            nodesRef.Remove(node);
+            verticesQueueRef.Remove(vertex);
         }
 
         private static int[] parseSources(string input)
@@ -123,22 +124,24 @@ namespace MultisourceDijkstra
             }
         }
 
+        // Relax edge to nearest-distance node from pseudo-priority-queue `nodes`
+        // Add edges to `nodes` (and references to `nodesRefs`)
         private static void relax(EdgeWeightedDigraph graph, int vertex)
         {
             List<int> tails = graph.adj(vertex);
 
-            foreach (int node in tails)
+            foreach (int tail in tails)
             {
-                float weight = graph.getWeight(vertex, node);
-                if (distanceTo[node] > distanceTo[vertex] + weight)
+                float weight = graph.getWeight(vertex, tail);
+                if (distanceTo[tail] > distanceTo[vertex] + weight)
                 {
-                    distanceTo[node] = distanceTo[vertex] + weight;
-                    edgeTo[node] = vertex;
-                    if (nodesRef.ContainsKey(node))
+                    distanceTo[tail] = distanceTo[vertex] + weight;
+                    edgeTo[tail] = vertex;
+                    if (verticesQueueRef.ContainsKey(tail))
                     {
-                        removeNode(node);
+                        removeVertex(tail);
                     }
-                    queueNode(node);
+                    queueVertex(tail);
                 }
             }
         }
@@ -169,10 +172,9 @@ namespace MultisourceDijkstra
 
         public EdgeWeightedDigraph(string pathToFile)
         {
-            StreamReader txtContents = new StreamReader(pathToFile);
-
             try
             {
+                StreamReader txtContents = new StreamReader(pathToFile);
                 // First two lines in txt are # of vertices and # of edges
                 vertexCount = Int32.Parse(txtContents.ReadLine());
                 edgeCount = Int32.Parse(txtContents.ReadLine());
@@ -186,7 +188,7 @@ namespace MultisourceDijkstra
 
                 // Subsequent lines are in following format: [int source] [int target] [float weight]
                 string edgeLine = txtContents.ReadLine();
-                string rePattern = @"(\d+)\s(\d+)\s(\d+\.\d+)";
+                string rePattern = @"(\d+)\s+(\d+)\s+(\d+\.\d+)";
 
                 while (edgeLine != null)
                 {
@@ -205,7 +207,7 @@ namespace MultisourceDijkstra
             catch (Exception e)
             {
                 Console.WriteLine("File could not be read.");
-                Console.WriteLine(e.Message);
+                throw new Exception(e.Message);
             }
         }
 
